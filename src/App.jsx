@@ -14,6 +14,30 @@ export default function App() {
   // Mengambil API Key dari file .env
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
+  const callGeminiApi = async (model, payload) => {
+    if (!apiKey || !apiKey.trim()) {
+      throw new Error('API key tidak ditemukan. Tambahkan VITE_GEMINI_API_KEY di file .env dan restart dev server.');
+    }
+
+    const isBearer = apiKey.startsWith('ya29.');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent${isBearer ? '' : `?key=${encodeURIComponent(apiKey)}`}`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (isBearer) headers.Authorization = `Bearer ${apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = json.error?.message || `HTTP error ${response.status}`;
+      throw new Error(message);
+    }
+    return json;
+  };
+
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -38,14 +62,7 @@ export default function App() {
       
       const payload = { contents: [{ parts: [{ text: llmPrompt }] }] };
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error("Gagal memanggil LLM");
-      const result = await response.json();
+      const result = await callGeminiApi('gemini-1.5-flash', payload);
       const enhancedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
       
       if (enhancedText) setPrompt(enhancedText.trim());
@@ -65,14 +82,7 @@ export default function App() {
       
       const payload = { contents: [{ parts: [{ text: llmPrompt }] }] };
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error("Gagal memanggil LLM");
-      const result = await response.json();
+      const result = await callGeminiApi('gemini-2.5-flash', payload);
       const suggestion = result.candidates?.[0]?.content?.parts?.[0]?.text;
       
       if (suggestion) setPrompt(suggestion.trim());
@@ -123,14 +133,7 @@ Instruksi Tambahan Pengguna: ${prompt || 'Buat sangat fotorealistik, pastikan ba
 
     while (attempt < maxRetries) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const result = await response.json();
+        const result = await callGeminiApi('gemini-2.5-flash-image-preview', payload);
         const generatedImageData = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData;
         
         if (generatedImageData && generatedImageData.data) {
