@@ -12,7 +12,7 @@ export default function App() {
   const [error, setError] = useState('');
 
   // Mengambil API Key dari file .env
-  const apiKey = String(import.meta.env.VITE_GEMINI_API_KEY).trim();
+  const apiKey = "AIzaSyAs6XFpOX_peh1OfKonU55zJIaVkAzRwh8";
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
